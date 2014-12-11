@@ -3,18 +3,18 @@
 # (c) Copyright 2007, 2008 by Christo Butcher
 # Licensed under the LGPL.
 #
-#   Dragonfly is free software: you can redistribute it and/or modify it 
-#   under the terms of the GNU Lesser General Public License as published 
-#   by the Free Software Foundation, either version 3 of the License, or 
+#   Dragonfly is free software: you can redistribute it and/or modify it
+#   under the terms of the GNU Lesser General Public License as published
+#   by the Free Software Foundation, either version 3 of the License, or
 #   (at your option) any later version.
 #
-#   Dragonfly is distributed in the hope that it will be useful, but 
-#   WITHOUT ANY WARRANTY; without even the implied warranty of 
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+#   Dragonfly is distributed in the hope that it will be useful, but
+#   WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 #   Lesser General Public License for more details.
 #
-#   You should have received a copy of the GNU Lesser General Public 
-#   License along with Dragonfly.  If not, see 
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with Dragonfly.  If not, see
 #   <http://www.gnu.org/licenses/>.
 #
 
@@ -22,7 +22,7 @@
 Dictation container class for Natlink
 ============================================================================
 
-This class is derived from :class:`DictationContainerBase` and implements 
+This class is derived from :class:`DictationContainerBase` and implements
 dictation formatting for the Natlink and Dragon NaturallySpeaking engine.
 
 """
@@ -101,13 +101,12 @@ class Word(object):
             self._info = natlink.getWordInfo(word.encode("windows-1252"))
 
         self._word = word
-        index = word.rfind("\\")
-        if index == -1:
+        if word.find("\\") == -1:
             self.written = word
             self.spoken = word
         else:
-            self.written = word[:index]
-            self.spoken = word[index+1:]
+            self.written = word[:word.find("\\")]
+            self.spoken = word[word.rfind("\\") + 1:]
         for name, bit in Word._flag_bits.items():
             self.__dict__[name.replace(" ", "_")] = ((self._info & bit) != 0)
 
