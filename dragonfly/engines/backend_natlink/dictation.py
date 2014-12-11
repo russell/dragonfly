@@ -3,18 +3,18 @@
 # (c) Copyright 2007, 2008 by Christo Butcher
 # Licensed under the LGPL.
 #
-#   Dragonfly is free software: you can redistribute it and/or modify it 
-#   under the terms of the GNU Lesser General Public License as published 
-#   by the Free Software Foundation, either version 3 of the License, or 
+#   Dragonfly is free software: you can redistribute it and/or modify it
+#   under the terms of the GNU Lesser General Public License as published
+#   by the Free Software Foundation, either version 3 of the License, or
 #   (at your option) any later version.
 #
-#   Dragonfly is distributed in the hope that it will be useful, but 
-#   WITHOUT ANY WARRANTY; without even the implied warranty of 
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+#   Dragonfly is distributed in the hope that it will be useful, but
+#   WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 #   Lesser General Public License for more details.
 #
-#   You should have received a copy of the GNU Lesser General Public 
-#   License along with Dragonfly.  If not, see 
+#   You should have received a copy of the GNU Lesser General Public
+#   License along with Dragonfly.  If not, see
 #   <http://www.gnu.org/licenses/>.
 #
 
@@ -22,7 +22,7 @@
 Dictation container class for Natlink
 ============================================================================
 
-This class is derived from :class:`DictationContainerBase` and implements 
+This class is derived from :class:`DictationContainerBase` and implements
 dictation formatting for the Natlink and Dragon NaturallySpeaking engine.
 
 """
@@ -36,6 +36,12 @@ try:
     import natlink
 except ImportError:
     natlink = None
+try:
+    import natlinkstatus
+    version = natlinkstatus.NatlinkStatus().getDNSVersion()
+except ImportError:
+    netlinkstatus = None
+    version = 10
 
 import logging
 from ..base import DictationContainerBase
@@ -79,6 +85,48 @@ class Word(object):
         )
     _flag_bits = dict(zip(_flag_names, [1 << index for index in xrange(32)]))
 
+    _flags_dragon11 = {
+        "pronoun": tuple(),
+        "space-bar": ("space after", "no space after", "no formatting",
+                      "keep cap", "no space before"),
+        "period": ("double space after", "cap next",
+                   "no space before", "not after period"),
+        "dot": ("no space before", "no space between", "no space after"),
+        "point": ("no space before", "no space between", "no space after"),
+        "comma": ("no space before",),
+        "spelling-cap": ("no formatting", "keep space", "force cap next"),
+        "cap": ("no formatting", "keep space", "force cap next"),
+        "cap-on": ("no formatting", "keep space", "cap mode"),
+        "cap-off": ("no formatting", "keep space", "normal cap mode"),
+        "all-caps": ("no formatting", "keep space", "upper next"),
+        "all-caps-on":  ("no formatting", "keep space", "upper mode"),
+        "all-caps-off": ("no formatting", "keep space", "normal cap mode"),
+        "no-caps": ("no formatting", "keep space", "lower next"),
+        "no-caps-on": ("no formatting", "keep space", "lower mode"),
+        "no-caps-off": ("no formatting", "keep space", "normal cap mode"),
+        "no-space": ("no formatting", "keep cap", "no space after"),
+        "no-space-on": ("no formatting", "keep cap", "no space mode"),
+        "no-space-off": ("no formatting", "keep cap", "normal space mode"),
+        "left-double-quote": ("no space after", "keep cap"),
+        "right-double-quote": ("no space before", "keep cap", "keep space"),
+        "question-mark": ("double space after", "cap next",
+                          "no space before", "not after period"),
+        "exclamation-mark": ("double space after", "cap next",
+                             "no space before", "not after period"),
+        "hyphen": ("no space before", "no space after"),
+        "at-sign": ("no space before", "no space after"),
+        "colon": ("no space before",),
+        "semicolon": ("no space before",),
+        "apostrophe-ess": ("no space before",),
+        "new-line": ("no formatting", "no space after",
+                     "keep cap", "newline after"),
+        "new-paragraph": ("no formatting", "no space after",
+                          "cap next", "double newline after"),
+        "letter": ("no space after",),
+        "uppercase-letter": ("no space after",),
+    }
+
+    _flags_dragon11['spelling-cap'] = _flags_dragon11['cap']
     _replacements = {
                      "one":      ("1", 0x00000400),
                      "two":      ("2", 0x00000400),
@@ -100,16 +148,26 @@ class Word(object):
         else:
             self._info = natlink.getWordInfo(word.encode("windows-1252"))
 
+        for name, bit in Word._flag_bits.items():
+            self.__dict__[name.replace(" ", "_")] = ((self._info & bit) != 0)
+
         self._word = word
         index = word.rfind("\\")
         if index == -1:
             self.written = word
             self.spoken = word
+        elif version >= 11:
+            data = word.split('\\')
+            if len(data) == 3:
+                self.written, flag, self.spoken = data
+            else:
+                self.written, flag = data
+                self.spoken = self.written
+            for name in Word._flags_dragon11.get(flag, tuple()):
+                self.__dict__[name.replace(" ", "_")] = True
         else:
             self.written = word[:index]
             self.spoken = word[index+1:]
-        for name, bit in Word._flag_bits.items():
-            self.__dict__[name.replace(" ", "_")] = ((self._info & bit) != 0)
 
     def __str__(self):
         flags = [flag for flag in self._flag_names
